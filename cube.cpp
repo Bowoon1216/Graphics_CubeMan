@@ -169,6 +169,7 @@ void drawHuman(glm::mat4 modelMat)
 	glm::mat4 headMat = glm::translate(modelMat, glm::vec3(0.0, 0.6, 0.0));
     headMat = glm::scale(headMat, glm::vec3(0.4, 0.3, 0.2));
     drawCube(headMat);
+	//얼굴 동그랗게
 
 	{
 		// 왼팔
