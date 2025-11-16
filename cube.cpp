@@ -13,8 +13,6 @@ glm::mat4 viewMat = glm::lookAt(glm::vec3(4.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f));
 glm::mat4 modelMat = glm::mat4(1.0f);
 
-//GLuint pvmMatrixID;
-
 int shadeMode = NO_LIGHT;
 int isTexture = false;
 int isRotate = false;
@@ -25,22 +23,25 @@ GLuint cubeProgram;
 GLuint sphereVAO;
 GLuint sphereProgram;
 
-//lighting & texture
+//Cube
 GLuint projectMatrixID;
 GLuint viewMatrixID;
 GLuint modelMatrixID;
+
 GLuint shadeModeID_cube;
 GLuint textureModeID_cube;
+GLuint g_cubeTextureHandle;// 큐브 텍스쳐 ID저장
 
-GLuint shadeModeID;
-GLuint textureModeID;
-
+//Sphere
 Sphere sphere(50, 50);
 
 GLuint sphereModelID;
 GLuint sphereViewID;
 GLuint sphereProjID;
 
+GLuint shadeModeID;
+GLuint textureModeID;
+GLuint g_sphereTextureHandle; //구 텍스쳐 id 저장
 
 //초기 각도 선언
 float leftArmAngle = 0.0;
@@ -72,7 +73,8 @@ const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
 
 point4 points[NumVertices]; //정육면체를 만드는데 필요한 모든 vertex 정보
 color4 colors[NumVertices];
-point4 normals[NumVertices];
+point4 normals[NumVertices]; //노말벡터 for lighting
+glm::vec2 texCoords[NumVertices]; //큐브 텍스쳐 좌표배열 for texture
 
 //각 vertex에 대한 position
 point4 vertices[8] = {
@@ -113,13 +115,22 @@ quad(int a, int b, int c, int d) //각각이 v0,v1,v2,v3라고 생각해라
     glm::vec3 normal = glm::normalize(glm::cross(glm::vec3(u), glm::vec3(v)));
     point4 normal_vec4 = point4(normal.x, normal.y, normal.z, 0.0); // w=0 (방향)
 
+    // 텍스처 좌표 정의 (a,b,c,d 순서에 맞춰서)
+    glm::vec2 uv_a = glm::vec2(0.0f, 1.0f);
+    glm::vec2 uv_b = glm::vec2(0.0f, 0.0f);
+    glm::vec2 uv_c = glm::vec2(1.0f, 0.0f);
+    glm::vec2 uv_d = glm::vec2(1.0f, 1.0f);
+
     // 6개의 정점 모두에 같은 노말 벡터, 색상, 위치를 할당
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[b]; points[Index] = vertices[b]; Index++;
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    normals[Index] = normal_vec4; colors[Index] = vertex_colors[d]; points[Index] = vertices[d]; Index++;}
+    // (a, b, c)
+    texCoords[Index] = uv_a; normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
+    texCoords[Index] = uv_b; normals[Index] = normal_vec4; colors[Index] = vertex_colors[b]; points[Index] = vertices[b]; Index++;
+    texCoords[Index] = uv_c; normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
+    // (a, c, d)
+    texCoords[Index] = uv_a; normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
+    texCoords[Index] = uv_c; normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
+    texCoords[Index] = uv_d; normals[Index] = normal_vec4; colors[Index] = vertex_colors[d]; points[Index] = vertices[d]; Index++;
+}
 
 // generate 12 triangles: 36 vertices and 36 colors
 void
@@ -146,13 +157,13 @@ init()
 	GLuint buffer;
 	glGenBuffers(1, &buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors) + sizeof(normals),
+	glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors) + sizeof(normals) + sizeof(texCoords),
 		NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
 	glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
 	glBufferSubData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), sizeof(normals), normals);
+	glBufferSubData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors) + sizeof(normals), sizeof(texCoords), texCoords);
 
-	// Load shaders and use the resulting shader program
 	cubeProgram = InitShader("vshader.glsl", "fshader.glsl");
 	glUseProgram(cubeProgram);
 
@@ -172,7 +183,11 @@ init()
     glVertexAttribPointer(vNormal, 4, GL_FLOAT, GL_FALSE, 0,
         BUFFER_OFFSET(sizeof(points) + sizeof(colors)));
 
-	//pvmMatrixID = glGetUniformLocation(program, "mPVM");
+	GLuint vTexCoord = glGetAttribLocation(cubeProgram, "vTexCoord");
+	glEnableVertexAttribArray(vTexCoord);
+	glVertexAttribPointer(vTexCoord, 2, GL_FLOAT, GL_FALSE, 0,
+		BUFFER_OFFSET(sizeof(points) + sizeof(colors) + sizeof(normals)));
+
 	projectMatrixID = glGetUniformLocation(cubeProgram, "mProject");
 	glUniformMatrix4fv(projectMatrixID, 1, GL_FALSE, &projectMat[0][0]);
 
@@ -189,18 +204,22 @@ init()
 	textureModeID_cube = glGetUniformLocation(cubeProgram, "isTexture");
 	glUniform1i(textureModeID_cube, isTexture);
 
+	g_cubeTextureHandle = loadBMP_custom("block.bmp");
+	GLuint TextureID = glGetUniformLocation(cubeProgram, "cubeTexture");
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, g_cubeTextureHandle);
+	glUniform1i(TextureID, 0);
+
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(135.0 / 255.0, 206.0 / 255.0, 250.0 / 255.0, 1.0); //바다색
 }
 
 void
 initSphere(){
-	// Create a vertex array object
-	//GLuint sphereVAO[1];
 	glGenVertexArrays(1, &sphereVAO);
 	glBindVertexArray(sphereVAO);
 
-	// Create and initialize a buffer object
 	GLuint buffer[1];
 	glGenBuffers(1, buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, buffer[0]);
@@ -218,7 +237,7 @@ initSphere(){
 	sphereProgram = InitShader("sphere_vshader.glsl", "sphere_fshader.glsl");
 	glUseProgram(sphereProgram);
 
-	// set up vertex arrays vshader에 입력으로 들어감
+	// vshader에 입력으로 들어감
 	GLuint vPosition = glGetAttribLocation(sphereProgram, "vPosition");
 	glEnableVertexAttribArray(vPosition);
 	glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0,
@@ -249,22 +268,15 @@ initSphere(){
 	textureModeID = glGetUniformLocation(sphereProgram, "isTexture");
 	glUniform1i(textureModeID, isTexture);
 
-	// Load the texture using any two methods
-	GLuint Texture = loadBMP_custom("earth.bmp");
-	//GLuint Texture = loadDDS("uvtemplate.DDS");
-
-	// Get a handle for our "myTextureSampler" uniform
+	g_sphereTextureHandle = loadBMP_custom("face.bmp");
 	GLuint TextureID = glGetUniformLocation(sphereProgram, "sphereTexture");
 
-	// Bind our texture in Texture Unit 0
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, Texture);
-
-	// Set our "myTextureSampler" sampler to use Texture Unit 0
-	glUniform1i(TextureID, 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, g_sphereTextureHandle);
+	glUniform1i(TextureID, 1);
 
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(135.0 / 255.0, 206.0 / 255.0, 250.0 / 255.0, 1.0);
 }
 //----------------------------------------------------------------------------
 
@@ -273,11 +285,17 @@ void drawSphere(glm::mat4 modelMat)
     glUseProgram(sphereProgram);
     glBindVertexArray(sphereVAO);
 
+	//texture active
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, g_sphereTextureHandle);
+
     glUniformMatrix4fv(sphereModelID, 1, GL_FALSE, &modelMat[0][0]);
 	glUniformMatrix4fv(sphereViewID, 1, GL_FALSE, &viewMat[0][0]); 
     glUniformMatrix4fv(sphereProjID, 1, GL_FALSE, &projectMat[0][0]);
+
 	glUniform1i(shadeModeID, shadeMode);
     glUniform1i(textureModeID, isTexture);
+
     glDrawArrays(GL_TRIANGLES, 0, sphere.verts.size());
 }
 
@@ -285,6 +303,10 @@ void drawCube(glm::mat4 modelMat)
 { 	
     glUseProgram(cubeProgram);
     glBindVertexArray(cubeVAO);
+
+	//texture active
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, g_cubeTextureHandle);
 
 	glUniformMatrix4fv(modelMatrixID, 1, GL_FALSE, &modelMat[0][0]);
     glUniformMatrix4fv(viewMatrixID, 1, GL_FALSE, &viewMat[0][0]);
@@ -303,8 +325,10 @@ void drawHuman(glm::mat4 modelMat)
 	drawCube(bodyMat);
 
 	//머리
-	glm::mat4 headMat = glm::translate(modelMat, glm::vec3(0.0, 0.6, 0.0));
-    headMat = glm::scale(headMat, glm::vec3(0.4, 0.3, 0.2));
+	glm::mat4 headMat = glm::translate(modelMat, glm::vec3(0.0, 0.7, 0.0));
+	headMat = glm::rotate(headMat, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	headMat = glm::rotate(headMat, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    headMat = glm::scale(headMat, glm::vec3(0.2, 0.2, 0.3));
 	drawSphere(headMat);
 
 	{
@@ -312,7 +336,6 @@ void drawHuman(glm::mat4 modelMat)
 		glm::mat4 lArm = glm::translate(modelMat, glm::vec3(0.375, 0.4, 0.0));
 		lArm = glm::rotate(lArm, glm::radians(leftArmAngle), glm::vec3(1, 0, 0));
 		lArm = glm::translate(lArm, glm::vec3(0.0, -0.2, 0.0)); 
-		//그리는 맷을 따로 두고 스케일 안된거를 자식에게 물려주기
 		glm::mat4 lArmDrawMat = glm::scale(lArm, glm::vec3(0.15, 0.4, 0.15));
 		drawCube(lArmDrawMat);
 
@@ -471,20 +494,29 @@ void keyboard(unsigned char key, int x, int y)
 			glm::vec3(0.0f, 1.0f, 0.0f)
 		);
 		break;
+	
+	case '4': // bottom view
+		viewMat = glm::lookAt(
+			glm::vec3(0.0f, -5.0f, 0.0f),   
+			glm::vec3(0.0f, 1.0f, 0.0f),
+			glm::vec3(0.0f, 0.0f, -1.0f)
+		);
+		break;
+
 	case 'l': case 'L':
 		shadeMode = (++shadeMode % NUM_LIGHT_MODE);
 		glUniform1i(shadeModeID, shadeMode);
-		glutPostRedisplay();
+		glUniform1i(shadeModeID_cube, shadeMode);
 		break;
+
 	case 'r': case 'R':
 		isRotate = !isRotate;
-		glutPostRedisplay();
 		break;
+
 	case 't': case 'T':
 		isTexture = !isTexture;
-		glUniform1i(textureModeID, isTexture);
-		glutPostRedisplay();
 		break;
+
 	case 033:  // Escape key
 	case 'q': case 'Q':
 		exit(EXIT_SUCCESS);
@@ -492,7 +524,7 @@ void keyboard(unsigned char key, int x, int y)
 
 	}
 
-	glutPostRedisplay(); // 카메라 즉시 반영
+	glutPostRedisplay();
 }
 
 
@@ -518,7 +550,7 @@ main(int argc, char **argv)
 	glutInitWindowSize(800, 800);
 	glutInitContextVersion(3, 2);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutCreateWindow("Swimming CubeMan");
+	glutCreateWindow("Swimming Cube Body and Sphere Head Man");
 
 	glewInit();
 

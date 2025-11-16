@@ -12,7 +12,7 @@ out vec4  fColor;
 uniform int shadeMode;
 uniform mat4 mView;
 uniform int isTexture;
-uniform sampler2D sphereTexture;
+uniform sampler2D cubeTexture;
 
 void main() 
 { 
@@ -25,7 +25,7 @@ void main()
 	if (shadeMode == NO_LIGHT)
 	{
 		if (isTexture == 1) {
-			fColor = texture( sphereTexture, texCoord ).rgba;
+			fColor = texture( cubeTexture, texCoord ).rgba;
 		} 
 		else {
 			fColor = color;
@@ -34,7 +34,7 @@ void main()
 	else if (shadeMode == GOURAUD)
 	{
 		if (isTexture == 1) {
-			fColor = color * texture( sphereTexture, texCoord ).rgba;
+			fColor = color * texture( cubeTexture, texCoord ).rgba;
 		} 
 		else {
 			fColor = color;
@@ -57,7 +57,7 @@ void main()
 
 		fColor = ambient * Ia + diff * Id + spec * Is;
 		if (isTexture == 1) {
-			fColor = fColor * texture( sphereTexture, texCoord ).rgba;
+			fColor = fColor * texture( cubeTexture, texCoord ).rgba;
 		}
 	}
 } 
