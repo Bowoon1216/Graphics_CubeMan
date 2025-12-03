@@ -17,7 +17,7 @@ uniform sampler2D sphereTexture;
 void main() 
 { 
 	vec4 L = normalize(vec4(3, 3, 5, 0));
-	float kd = 0.8, ks = 1.0, ka = 0.2, shininess = 60;
+	float kd = 0.8, ks = 1.0, ka = 0.2, shininess = 30;
 	vec4 Id = color;
 	vec4 Is = vec4(1, 1, 1, 1);
 	vec4 Ia = color;
@@ -55,10 +55,17 @@ void main()
 		vec4 R = reflect(-L, N);
 		float spec = ks * pow(clamp(dot(V, R), 0, 1), shininess);
 
-		fColor = ambient * Ia + diff * Id + spec * Is;
+		vec4 ambientAndDiffuse = ambient * Ia + diff * Id;
+		vec4 specular = spec * Is;
+
 		if (isTexture == 1) {
-			fColor = fColor * texture( sphereTexture, texCoord ).rgba;
+			fColor = ambientAndDiffuse * texture( sphereTexture, texCoord ).rgba;
 		}
+		else {
+			fColor = ambientAndDiffuse;
+		}
+
+		fColor = fColor + specular;
 	}
 } 
 

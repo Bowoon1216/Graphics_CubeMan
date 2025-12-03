@@ -106,27 +106,23 @@ int Index = 0;
 void
 quad(int a, int b, int c, int d) //각각이 v0,v1,v2,v3라고 생각해라
 {
-	// 한 면(두 삼각형)의 노말 벡터 계산
     point4 u = vertices[b] - vertices[a];
     point4 v = vertices[c] - vertices[b];
     
-    // 외적(cross product)을 사용하여 노말 계산
+    // 노말 계산
     // vec3로 변환 후 계산하고 다시 vec4로
     glm::vec3 normal = glm::normalize(glm::cross(glm::vec3(u), glm::vec3(v)));
     point4 normal_vec4 = point4(normal.x, normal.y, normal.z, 0.0); // w=0 (방향)
 
-    // 텍스처 좌표 정의 (a,b,c,d 순서에 맞춰서)
     glm::vec2 uv_a = glm::vec2(0.0f, 1.0f);
     glm::vec2 uv_b = glm::vec2(0.0f, 0.0f);
     glm::vec2 uv_c = glm::vec2(1.0f, 0.0f);
     glm::vec2 uv_d = glm::vec2(1.0f, 1.0f);
 
     // 6개의 정점 모두에 같은 노말 벡터, 색상, 위치를 할당
-    // (a, b, c)
     texCoords[Index] = uv_a; normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
     texCoords[Index] = uv_b; normals[Index] = normal_vec4; colors[Index] = vertex_colors[b]; points[Index] = vertices[b]; Index++;
     texCoords[Index] = uv_c; normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    // (a, c, d)
     texCoords[Index] = uv_a; normals[Index] = normal_vec4; colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
     texCoords[Index] = uv_c; normals[Index] = normal_vec4; colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
     texCoords[Index] = uv_d; normals[Index] = normal_vec4; colors[Index] = vertex_colors[d]; points[Index] = vertices[d]; Index++;
@@ -507,10 +503,6 @@ void keyboard(unsigned char key, int x, int y)
 		shadeMode = (++shadeMode % NUM_LIGHT_MODE);
 		glUniform1i(shadeModeID, shadeMode);
 		glUniform1i(shadeModeID_cube, shadeMode);
-		break;
-
-	case 'r': case 'R':
-		isRotate = !isRotate;
 		break;
 
 	case 't': case 'T':
